@@ -1,0 +1,2 @@
+Increase 1 2
+Multiply 2 4
