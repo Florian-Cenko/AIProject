@@ -1,2 +1,9 @@
-Increase 1 2
-Multiply 2 4
+8, 64       // N: πλήθος εντολών, C: συνολικό κόστος
+Increase 45 2
+Divide 46 13
+Increase 23 2
+Increase 24 2
+Increase 25 2
+Multiply 26 14
+Multiply 52 27
+Increase 104 2

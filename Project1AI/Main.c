@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 
 
@@ -28,6 +29,8 @@ typedef struct Node {
     struct Node* parent;
     int cost; // ���������� ��� ����� ��� �� ������
     int prevValue;
+    int currCost;
+    int plithos;
 } Node;
 
 typedef struct QueueNode {
@@ -52,12 +55,14 @@ typedef struct {
 } Stack;
 
 // ���������� ���� ���� ������
-Node* createNode(int value, Operation operation, Node* parent, int cost) {
+Node* createNode(int value, Operation operation, Node* parent, int currCost,int cost,int plithos) {
     Node* newNode = (Node*)malloc(sizeof(Node));
     newNode->value = value;
     newNode->operation = operation;
     newNode->parent = parent;
     newNode->cost = cost;
+    newNode->currCost = currCost;
+    newNode->plithos = plithos;
     return newNode;
 }
 
@@ -136,6 +141,14 @@ Node* dequeue(Queue* q) {
 }
 
 
+void printCost_Plithos(Node* node, FILE* outputFile, int tarValue) {
+    if (node->value == tarValue) {
+        fprintf(outputFile, "%d, %d       // N: πλήθος εντολών, C: συνολικό κόστος\n",
+                node->plithos, node->cost);
+    }
+}
+
+
 // �������� ��� ���������� �������
 void printOperations(Node* node, FILE* outputFile) {
     if (node == NULL) {
@@ -170,8 +183,13 @@ void printOperations(Node* node, FILE* outputFile) {
                 operationString = "Square Root";
                 break;
         }
+
+
+
+
         if(operationString!=NULL){
-        fprintf(outputFile, "%s %d %d\n", operationString, currentNode->prevValue, currentNode->cost);
+
+           fprintf(outputFile, "%s %d %d\n", operationString, currentNode->prevValue, currentNode->currCost);
 
         }
     }
@@ -181,8 +199,9 @@ void printOperations(Node* node, FILE* outputFile) {
 
 // �������� ��� ���������� BFS
 void bfs(int startValue, int targetValue) {
+
     Queue* queue = createQueue();
-    Node* startNode = createNode(startValue, -1, NULL, 0); // �� ������ ������ ����� 0
+    Node* startNode = createNode(startValue, -1, NULL, 0,0,0); // �� ������ ������ ����� 0
     enqueue(queue, startNode);
     int previousValue;
     FILE* outputFile = fopen("solution.txt", "w");
@@ -190,39 +209,51 @@ void bfs(int startValue, int targetValue) {
         perror("Unable to create or open the output file");
         return;
     }
+
     while (!isEmptyQ(queue)) {
         Node* currentNode = dequeue(queue);
         if (currentNode->value == targetValue) {
             printf("Found a solution with cost %d:\n", currentNode->cost);
+            printCost_Plithos(currentNode,outputFile,targetValue);
             printOperations(currentNode, outputFile);
             return;
         }
 
 
         int newValue;
+        int currentCost;
         int cost;
+        int plithos=0;
 
         int pValue = currentNode->value;
         newValue = currentNode->value + 1;
         if (newValue <= targetValue) {
+            currentCost = INCREMENT_COST;
+            plithos = currentNode->plithos + 1;
             cost = currentNode->cost + INCREMENT_COST;
-            Node* newNode = createNode(newValue, INCREASE_BY_ONE, currentNode, cost);
+            Node* newNode = createNode(newValue, INCREASE_BY_ONE, currentNode, currentCost,cost,plithos);
             newNode->prevValue = pValue;
             enqueue(queue, newNode);
         }
 
+        previousValue = currentNode->value;
         newValue = currentNode->value - 1;
         if (newValue >= 0) {
+            currentCost = DECREMENT_COST;
+            plithos = currentNode->plithos + 1;
             cost = currentNode->cost + DECREMENT_COST;
-            Node* newNode = createNode(newValue, DECREASE_BY_ONE, currentNode, cost);
+            Node* newNode = createNode(newValue, DECREASE_BY_ONE, currentNode, currentCost,cost,plithos);
+            newNode->prevValue = previousValue;
             enqueue(queue, newNode);
         }
         // �������� ������ �� �����������
         previousValue = currentNode->value;
         newValue = currentNode->value * 2;
         if (newValue <= targetValue) {
+            currentCost = DOUBLE_COST(previousValue);
+            plithos = currentNode->plithos + 1;
             cost = currentNode->cost + DOUBLE_COST(previousValue);
-            Node* newNode = createNode(newValue, MULTIPLY, currentNode, cost);
+            Node* newNode = createNode(newValue, MULTIPLY, currentNode, currentCost,cost,plithos);
             newNode->prevValue = previousValue;
             enqueue(queue, newNode);
         }
@@ -230,8 +261,10 @@ void bfs(int startValue, int targetValue) {
         if (currentNode->value % 2 == 0) {
             previousValue = currentNode->value;
             newValue = currentNode->value / 2;
+            currentCost = HALVE_COST(previousValue);
+            plithos = currentNode->plithos + 1;
             cost = currentNode->cost + HALVE_COST(previousValue);
-            Node* newNode = createNode(newValue, DIVIDE, currentNode, cost);
+            Node* newNode = createNode(newValue, DIVIDE, currentNode,currentCost, cost,plithos);
             newNode->prevValue = previousValue;
             enqueue(queue, newNode);
         }
@@ -239,8 +272,10 @@ void bfs(int startValue, int targetValue) {
         previousValue = currentNode->value;
         newValue = currentNode->value * currentNode->value;
         if (newValue <= targetValue) {
+            currentCost = SQUARE_COST(previousValue);
+            plithos = currentNode->plithos + 1;
             cost = currentNode->cost + SQUARE_COST(previousValue);
-            Node* newNode = createNode(newValue, SQUARE, currentNode, cost);
+            Node* newNode = createNode(newValue, SQUARE, currentNode,currentCost, cost,plithos);
             newNode->prevValue = previousValue;
             enqueue(queue, newNode);
         }
@@ -249,15 +284,20 @@ void bfs(int startValue, int targetValue) {
         if (sqrtValue * sqrtValue == currentNode->value && currentNode->value > 1) {
             previousValue = currentNode->value;
             newValue = sqrtValue;
+            currentCost = SQRT_COST(previousValue);
+            plithos = currentNode->plithos + 1;
             cost = currentNode->cost + SQRT_COST(previousValue);
-            Node* newNode = createNode(newValue, SQUARE_ROOT, currentNode, cost);
+            Node* newNode = createNode(newValue, SQUARE_ROOT, currentNode,currentCost, cost,plithos);
             newNode->prevValue = previousValue;
             enqueue(queue, newNode);
         }
+
     }
 
     printf("No solution found.\n");
+    fclose(outputFile);
 }
+
 
 // ���������� ������ ��� ��� ����
 void destroyQueue(Queue* q) {
@@ -278,6 +318,8 @@ int main() {
 
     // ������� ��� ��������� BFS ��� ��� ��������� ��� ��������� ���������� �������
     bfs(startValue, targetValue);
+
+
 
     return 0;
 }
